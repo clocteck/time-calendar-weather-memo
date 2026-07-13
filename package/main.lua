@@ -218,7 +218,7 @@ end
 local MEMO_FILE = APP_ROOT .. "/memos.json"
 local WEB_HTML = [=[<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>备忘录</title><style>
 body{font-family:system-ui,"Microsoft YaHei",sans-serif;background:#f4f6f8;color:#17202a;margin:0}.page{max-width:620px;margin:0 auto;padding:22px 16px}.panel{background:#fff;border:1px solid #dce2e8;border-radius:10px;padding:20px;box-shadow:0 5px 18px #0000000d}h1{margin:0 0 6px;font-size:25px}p{color:#687583;margin:0 0 18px}label{display:block;font-weight:700;margin:15px 0 6px}input{box-sizing:border-box;width:100%;padding:12px;border:1px solid #cbd3dc;border-radius:7px;font-size:16px}button{margin-top:20px;padding:11px 20px;border:0;border-radius:7px;background:#2675d8;color:#fff;font-size:16px;font-weight:700;cursor:pointer}button:disabled{opacity:.55}.status{display:inline-block;margin-left:12px;color:#287a45}.error{color:#c0392b}</style><main class="page"><section class="panel"><h1>备忘录</h1><p>修改后点击保存，设备上的内容会立即更新。</p><label>第一条</label><input id="m1"><label>第二条</label><input id="m2"><label>第三条</label><input id="m3"><button id="save">保存备忘录</button><span id="status" class="status"></span></section></main><script>
-const api='api/memos';const q=id=>document.getElementById(id);async function load(){let r=await fetch(api);let d=await r.json();if(!d.ok)throw Error(d.error||'读取失败');(d.memos||[]).forEach((v,i)=>q('m'+(i+1)).value=v||'')}async function save(){q('save').disabled=true;q('status').className='status';q('status').textContent='保存中';try{let r=await fetch(api,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({memos:[q('m1').value,q('m2').value,q('m3').value]})});let d=await r.json();if(!d.ok)throw Error(d.error||'保存失败');q('status').textContent='已保存'}catch(e){q('status').className='status error';q('status').textContent=e.message}q('save').disabled=false}q('save').onclick=save;load().catch(e=>{q('status').className='status error';q('status').textContent=e.message});
+const api=location.pathname.replace(/\/?$/,'/')+'api/memos';const q=id=>document.getElementById(id);async function load(){let r=await fetch(api);let d=await r.json();if(!d.ok)throw Error(d.error||'读取失败');(d.memos||[]).forEach((v,i)=>q('m'+(i+1)).value=v||'')}async function save(){q('save').disabled=true;q('status').className='status';q('status').textContent='保存中';try{let r=await fetch(api,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({memos:[q('m1').value,q('m2').value,q('m3').value]})});let d=await r.json();if(!d.ok)throw Error(d.error||'保存失败');q('status').textContent='已保存'}catch(e){q('status').className='status error';q('status').textContent=e.message}q('save').disabled=false}q('save').onclick=save;load().catch(e=>{q('status').className='status error';q('status').textContent=e.message});
 </script></html>]=]
 
 local function memo_save()
@@ -247,6 +247,13 @@ local function web_json(data, status)
   return web_response(json.encode(data), "application/json; charset=utf-8", status)
 end
 
+local function normalize_route_base(base)
+  if type(base) ~= "string" then return nil end
+  base = base:gsub("\\", "/"):gsub("^/*", ""):gsub("/*$", "")
+  if base == "" then return nil end
+  return "/" .. base
+end
+
 local function start_web()
   if not (httpd and httpd.start and httpd.dynamic) then return end
   pcall(httpd.stop)
@@ -271,13 +278,22 @@ local function start_web()
     end
     return web_json({ ok = true, memos = APP.memos })
   end
-  local bases = { APP_ID }
-  local actual = app and app.route_base and app.route_base()
-  if actual and actual ~= "" and actual ~= APP_ID then bases[#bases + 1] = actual end
+  local bases = {}
+  local seen = {}
+  local function add_base(base)
+    base = normalize_route_base(base)
+    if base and not seen[base] then
+      seen[base] = true
+      bases[#bases + 1] = base
+    end
+  end
+  add_base(APP_ID)
+  add_base(app and app.route_base and app.route_base())
   for _, base in ipairs(bases) do
-    route(httpd.GET, "/" .. base .. "/", index)
-    route(httpd.GET, "/" .. base .. "/api/memos", memos)
-    route(httpd.POST, "/" .. base .. "/api/memos", memos)
+    route(httpd.GET, base, index)
+    route(httpd.GET, base .. "/", index)
+    route(httpd.GET, base .. "/api/memos", memos)
+    route(httpd.POST, base .. "/api/memos", memos)
   end
   APP.web_started = true
 end
