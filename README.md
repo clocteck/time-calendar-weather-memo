@@ -2,12 +2,12 @@
 
 面向 Cubic 320×240 设备的桌面信息助手，在一屏内显示本地时间、农历、实时天气、月历和三条备忘录。
 
-由群友🥶开发。当前 App 版本为 `1.0.1`，已经过实际设备测试。
+由群友🥶开发。当前 App 版本为 `1.0.2`。
 
 ## 目录结构
 
 ```text
-assistant/
+time-calendar-weather-memo/
 ├─ package/              # 可直接部署到设备的运行包
 │  ├─ app.info
 │  ├─ main.lua
@@ -20,9 +20,9 @@ assistant/
 
 ## 部署
 
-将 `package/` 中的内容复制到设备的 `/sd/apps/assistant/`，不要复制 `package` 目录本身。入口文件和全部运行素材均已包含在包内。
+将 `package/` 中的内容复制到设备的 `/sd/apps/time-calendar-weather-memo/`，不要复制 `package` 目录本身。入口文件和全部运行素材均已包含在包内。
 
-当前版本已经过测试，可按上述目录直接部署。
+运行时会从当前 App 的入口路径自动解析安装目录，因此字体、天气图标、备忘录和 WebUI 路由不会再依赖硬编码的文件夹名称。
 
 ## 配置
 
@@ -31,7 +31,7 @@ assistant/
 - `weather_address`（兼容 `weatherAddress`、`weather_city`、`city_name`、`city`）：天气位置或城市 ID。
 - `timezone`：POSIX 时区字符串，默认 `CST-8`。支持带夏令时规则的写法，例如 `EST5EDT,M3.2.0/2,M11.1.0/2`；运行时会在 `time.getlocal()` 前应用该时区，使 DST 切换生效。
 
-备忘录保存在 `/sd/apps/assistant/memos.json`，也可通过应用 WebUI 修改。
+备忘录保存在当前 App 目录的 `memos.json`，也可通过应用 WebUI 修改。
 
 ## 素材
 

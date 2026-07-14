@@ -1,6 +1,12 @@
-local APP_ID = "assistant"
-local APP_ROOT = "/sd/apps/" .. APP_ID
-local APP_KEY = "HOLOCUBIC_ASSISTANT_APP"
+local CURRENT_APP = app and app.current and app.current()
+assert(type(CURRENT_APP) == "table" and type(CURRENT_APP.entry) == "string", "current app entry is unavailable")
+
+local APP_ROOT = CURRENT_APP.entry:gsub("\\", "/"):match("^(.*)/[^/]+$")
+assert(APP_ROOT, "current app directory is unavailable")
+
+local APP_ID = CURRENT_APP.id or APP_ROOT:match("([^/]+)$")
+local LV_APP_ROOT = APP_ROOT:gsub("^/sd", "S:", 1)
+local APP_KEY = "HOLOCUBIC_" .. tostring(APP_ID):upper():gsub("[^%w]", "_") .. "_APP"
 
 local previous = rawget(_G, APP_KEY)
 if previous and previous.stop then
@@ -400,7 +406,7 @@ local function build_ui(cal)
   call(lv_img_set_zoom, UI.weather_icon, 224)
   call(lv_img_set_antialias, UI.weather_icon, true)
   if lv_img_set_src then
-    call(lv_img_set_src, UI.weather_icon, "S:/apps/" .. APP_ID .. "/assets/icons/set2/103.png")
+    call(lv_img_set_src, UI.weather_icon, LV_APP_ROOT .. "/assets/icons/set2/103.png")
   end
 
   local separator = lv_obj_create(root)
@@ -428,7 +434,7 @@ refresh = function(cal)
   lv_label_set_text(UI.lunar, APP.lunar)
   lv_label_set_text(UI.weather, APP.weather)
   if UI.weather_icon and lv_img_set_src then
-    call(lv_img_set_src, UI.weather_icon, "S:/apps/" .. APP_ID .. "/assets/icons/set2/" .. tostring(APP.weather_code or "103") .. ".png")
+    call(lv_img_set_src, UI.weather_icon, LV_APP_ROOT .. "/assets/icons/set2/" .. tostring(APP.weather_code or "103") .. ".png")
   end
   lv_label_set_text(UI.month, tostring(cal.year) .. "年" .. tostring(cal.month) .. "月")
   for i = 1, 3 do
