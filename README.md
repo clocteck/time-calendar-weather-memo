@@ -2,7 +2,7 @@
 
 面向 Cubic 320×240 设备的桌面信息助手，在一屏内显示本地时间、农历、实时天气、月历和三条备忘录。
 
-由群友🥶开发。当前 App 版本为 `1.0.3`。
+由群友🥶开发。当前 App 版本为 `1.0.5`。
 
 ## 目录结构
 
@@ -31,7 +31,9 @@ time-calendar-weather-memo/
 - `weather_address`（兼容 `weatherAddress`、`weather_city`、`city_name`、`city`）：天气位置或城市 ID。
 - `timezone`：POSIX 时区字符串，默认 `CST-8`。支持带夏令时规则的写法，例如 `EST5EDT,M3.2.0/2,M11.1.0/2`；运行时会在 `time.getlocal()` 前应用该时区，使 DST 切换生效。
 
-备忘录保存在当前 App 目录的 `memos.json`，也可通过应用 WebUI 修改。
+备忘录保存在当前 App 目录的 `memos.json`，也可通过应用 WebUI 修改。应用运行时会监听
+以当前 App ID 命名的 IPC endpoint；收到 `memos.reload` 后重新读取文件并立即刷新界面。
+旧固件没有 IPC 时仍可正常运行，外部写入的备忘录会在下次进入应用时显示。
 
 ## 素材
 

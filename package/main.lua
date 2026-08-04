@@ -25,6 +25,7 @@ local APP = {
   weather_valid = false,
   weather_error = "",
   weather_timer = nil,
+  ipc_listening = false,
   lunar = "五月廿八",
   font_handles = {},
   memos = {
@@ -442,6 +443,29 @@ refresh = function(cal)
   end
 end
 
+local function start_memo_ipc()
+  if not ipc or not ipc.listen then
+    print("[assistant] ERROR: memo reload IPC unavailable; external memo updates require an app restart")
+    return false
+  end
+  local ok, result, listen_err = pcall(function()
+    return ipc.listen(APP_ID, function(topic)
+      if topic ~= "memos.reload" then return end
+      memo_load()
+      refresh(local_time())
+      print("[assistant] memo reload applied")
+    end)
+  end)
+  if not ok or result == nil or result == false then
+    local reason = ok and listen_err or result
+    print("[assistant] ERROR: memo reload IPC listener failed: " .. tostring(reason or "unknown error")
+      .. "; external memo updates require an app restart")
+    return false
+  end
+  APP.ipc_listening = true
+  return true
+end
+
 load_runtime_settings()
 local cal = local_time()
 APP.last_date = date_key(cal)
@@ -451,6 +475,7 @@ build_ui(cal)
 refresh(cal)
 request_weather()
 start_web()
+start_memo_ipc()
 
 APP.timer = tmr.create()
 APP.timer:alarm(1000, tmr.ALARM_AUTO, function()
@@ -486,6 +511,10 @@ function APP.stop()
   if APP.web_started and httpd and httpd.stop then
     pcall(httpd.stop)
     APP.web_started = false
+  end
+  if APP.ipc_listening and ipc and ipc.listen then
+    pcall(function() ipc.listen(APP_ID, nil) end)
+    APP.ipc_listening = false
   end
   pcall(function() key.off() end)
   if #APP.font_handles > 0 and lv_font_free then
