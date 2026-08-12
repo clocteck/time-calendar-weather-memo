@@ -16,7 +16,9 @@ if previous and previous.stop then
 end
 
 local APP = {
+  running = true,
   timer = nil,
+  controller_timer = nil,
   last_date = "",
   weather = "天气获取",
   weather_code = "103",
@@ -33,6 +35,7 @@ local APP = {
     "阅读二十分钟",
     "散步放松",
   },
+  controller_buttons = 0,
 }
 _G[APP_KEY] = APP
 
@@ -443,6 +446,34 @@ refresh = function(cal)
   end
 end
 
+local function exit_app(reason)
+  APP.stop(reason or "controller-exit")
+  if app and app.exit then pcall(function() app.exit() end) end
+end
+
+local PAD_SELECT, PAD_HOME = 4096, 32768
+
+local function handle_controller(pressed)
+  if (pressed & (PAD_SELECT | PAD_HOME)) ~= 0 then
+    exit_app("controller-exit")
+  end
+end
+
+local function start_controller()
+  if not (controller and controller.state and tmr and tmr.create) then return false end
+  APP.controller_timer = tmr.create()
+  APP.controller_timer:alarm(40, tmr.ALARM_AUTO, function()
+    if not APP.running then return end
+    local ok, pad = pcall(function() return controller.state("ble-main") end)
+    local buttons = ok and type(pad) == "table" and tonumber(pad.buttons) or 0
+    buttons = buttons or 0
+    local pressed = buttons & (~APP.controller_buttons)
+    APP.controller_buttons = buttons
+    if pressed ~= 0 then handle_controller(pressed) end
+  end)
+  return true
+end
+
 local function start_memo_ipc()
   if not ipc or not ipc.listen then
     print("[assistant] ERROR: memo reload IPC unavailable; external memo updates require an app restart")
@@ -476,6 +507,7 @@ refresh(cal)
 request_weather()
 start_web()
 start_memo_ipc()
+start_controller()
 
 APP.timer = tmr.create()
 APP.timer:alarm(1000, tmr.ALARM_AUTO, function()
@@ -495,12 +527,14 @@ end)
 
 key.on(key.HOME, function(event)
   if event == key.SHORT then
-    app.exit()
+    exit_app("home-key")
   end
 end)
 
 function APP.stop()
-  for _, timer in pairs({ APP.timer, APP.weather_timer }) do
+  if not APP.running then return end
+  APP.running = false
+  for _, timer in pairs({ APP.timer, APP.weather_timer, APP.controller_timer }) do
     if timer then
       pcall(function() timer:stop() end)
       pcall(function() timer:unregister() end)
@@ -508,6 +542,7 @@ function APP.stop()
   end
   APP.timer = nil
   APP.weather_timer = nil
+  APP.controller_timer = nil
   if APP.web_started and httpd and httpd.stop then
     pcall(httpd.stop)
     APP.web_started = false
