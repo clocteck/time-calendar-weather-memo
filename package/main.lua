@@ -25,6 +25,8 @@ local APP = {
   weather_valid = false,
   weather_error = "",
   weather_timer = nil,
+  controller_timer = nil,
+  controller_buttons = 0,
   ipc_listening = false,
   lunar = "五月廿八",
   font_handles = {},
@@ -499,8 +501,24 @@ key.on(key.HOME, function(event)
   end
 end)
 
+local PAD_SELECT, PAD_HOME = 4096, 32768
+if controller and controller.state and tmr and tmr.create then
+  APP.controller_timer = tmr.create()
+  APP.controller_timer:alarm(40, tmr.ALARM_AUTO, function()
+    if app.exiting() then return end
+    local ok, pad = pcall(function() return controller.state("ble-main") end)
+    local buttons = ok and type(pad) == "table" and tonumber(pad.buttons) or 0
+    buttons = buttons or 0
+    local pressed = buttons & (~APP.controller_buttons)
+    APP.controller_buttons = buttons
+    if (pressed & (PAD_SELECT | PAD_HOME)) ~= 0 then
+      pcall(function() app.exit() end)
+    end
+  end)
+end
+
 function APP.stop()
-  for _, timer in pairs({ APP.timer, APP.weather_timer }) do
+  for _, timer in pairs({ APP.timer, APP.weather_timer, APP.controller_timer }) do
     if timer then
       pcall(function() timer:stop() end)
       pcall(function() timer:unregister() end)
@@ -508,6 +526,7 @@ function APP.stop()
   end
   APP.timer = nil
   APP.weather_timer = nil
+  APP.controller_timer = nil
   if APP.web_started and httpd and httpd.stop then
     pcall(httpd.stop)
     APP.web_started = false
