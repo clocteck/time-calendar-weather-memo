@@ -30,11 +30,7 @@ local APP = {
   ipc_listening = false,
   lunar = "五月廿八",
   font_handles = {},
-  memos = {
-    "项目复盘",
-    "阅读二十分钟",
-    "散步放松",
-  },
+  memos = { "", "", "" },
 }
 _G[APP_KEY] = APP
 
@@ -244,8 +240,16 @@ local function memo_load()
   local raw = read_text(MEMO_FILE)
   local doc = decode_json(raw)
   if type(doc) == "table" and type(doc.memos) == "table" then
-    for i = 1, 3 do if type(doc.memos[i]) == "string" then APP.memos[i] = doc.memos[i] end end
+    for i = 1, 3 do
+      APP.memos[i] = type(doc.memos[i]) == "string" and doc.memos[i] or ""
+    end
+    return true
   end
+  APP.memos = { "", "", "" }
+  if raw == nil and not memo_save() then
+    print("[assistant] ERROR: failed to create default memos.json")
+  end
+  return false
 end
 
 local function web_response(body, content_type, status)

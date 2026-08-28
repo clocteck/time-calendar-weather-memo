@@ -16,5 +16,5 @@ description_zh_tw = 在同一畫面顯示本地時間、農曆、即時天氣、
 description_zh_hant = 在同一畫面顯示本地時間、農曆、即時天氣、月曆與三則備忘錄
 description_en = Shows local time, lunar date, live weather, monthly calendar, and three memos on one screen
 description_ja = 現地時刻、旧暦、現在の天気、月間カレンダー、3 件のメモを 1 画面に表示します
-version = 1.0.6
+version = 1.0.7
 allow_webui = true
